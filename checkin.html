@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🐕‍🦺 Wachhund Check-In | ETS & MTS</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #070d19;
+            color: #f8fafc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            text-align: center;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <div style="font-size:2.8rem; margin-bottom:10px;">🐕‍🦺🔒</div>
+        <h2 style="color:#34d399; margin:0 0 8px 0;">Verbinde mit KI-Ingo Wachhund...</h2>
+        <p style="color:#94a3b8; font-size:0.9rem;">Du wirst automatisch weitergeleitet.</p>
+    </div>
+    <script>
+        (async function() {
+            const params = new URLSearchParams(window.location.search);
+            const key = params.get('key') || 'ETS-WC-GUARD-2026-9F8A7B';
+            const savedWd = localStorage.getItem('ets_wd_token') || '';
+            const savedSt = localStorage.getItem('ets_st_token') || '';
+            try {
+                const r = await fetch('tunnel.json?_t=' + Date.now(), { cache: 'no-store' });
+                const d = await r.json();
+                const base = (d.tunnel_url || '').replace(/\/$/, '');
+                // Falls das Handy auf der festen Adresse schon seine Token gespeichert hat, direkt in die App einloggen!
+                if (savedWd && savedSt && params.get('force_form') !== '1') {
+                    window.location.replace(base + '/index.html?wd_enroll=' + encodeURIComponent(savedWd) + '&st_pass=' + encodeURIComponent(savedSt));
+                    return;
+                }
+                let url = base + '/wand_checkin.html?key=' + encodeURIComponent(key) + '&v=' + Date.now();
+                if (savedWd) url += '&wd_token=' + encodeURIComponent(savedWd);
+                window.location.replace(url);
+            } catch (e) {
+                document.body.innerHTML = '<div style="padding:20px;color:#fca5a5;">Verbindungsfehler. Bitte Seite neu laden.</div>';
+            }
+        })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "name": "ETS & MTS Baustellen-App",
+  "short_name": "ETS & MTS",
+  "start_url": "/ets-app/?launch=1",
+  "scope": "/ets-app/",
+  "display": "standalone",
+  "background_color": "#070d19",
+  "theme_color": "#10b981",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3252/3252061.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
