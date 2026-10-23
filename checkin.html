@@ -41,6 +41,8 @@
                     return;
                 }
                 let url = base + '/wand_checkin.html?key=' + encodeURIComponent(key) + '&v=' + Date.now();
+                if (params.get('person')) url += '&person=' + encodeURIComponent(params.get('person'));
+                if (params.get('auto')) url += '&auto=' + encodeURIComponent(params.get('auto'));
                 if (savedWd) url += '&wd_token=' + encodeURIComponent(savedWd);
                 window.location.replace(url);
             } catch (e) {
