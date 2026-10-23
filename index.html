@@ -4,11 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ETS & MTS Baustellen-App</title>
-    <link rel="manifest" href="manifest.json">
+    <link rel="manifest" href="/ets-app/manifest.json">
     <meta name="theme-color" content="#10b981">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="ETS & MTS">
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3252/3252061.png">
+    <link rel="apple-touch-icon" href="/ets-app/icon-192.png">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -40,11 +40,16 @@
             background: linear-gradient(135deg, #10b981, #059669);
             color: #042f2e;
             font-weight: 900;
-            font-size: 1.08rem;
+            font-size: 1.05rem;
             cursor: pointer;
             text-decoration: none;
-            margin-top: 16px;
+            margin-top: 14px;
             box-shadow: 0 8px 25px rgba(16, 185, 129, 0.35);
+        }
+        .btn-install {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: #0f172a;
+            box-shadow: 0 8px 25px rgba(245, 158, 11, 0.4);
         }
         .hint {
             background: rgba(245, 158, 11, 0.16);
@@ -68,11 +73,15 @@
         </p>
 
         <div id="setup-box" style="display:none;">
+            <button id="btn-native-install" class="btn btn-install" style="display:none;" onclick="triggerNativeInstall()">
+                📲 1-Klick: App-Icon jetzt auf Handy installieren
+            </button>
+
             <div class="hint">
-                <strong style="color:#fbbf24; font-size:0.98rem;">📲 WICHTIG: JETZT HIER ALS APP-ICON SPEICHERN!</strong><br>
-                Diese Seite hat eine <strong>unsterbliche, feste Adresse</strong> (bleibt auch nach Stromausfall oder Server-Neustart immer gleich!):<br><br>
-                1️⃣ Tippe jetzt oben rechts im Browser auf die <strong>drei Punkte <code>⋮</code></strong> (iPhone: <strong>Teilen <code>⬆️</code></strong>).<br>
-                2️⃣ Wähle <strong>„Zum Startbildschirm zufügen / App installieren“</strong>.<br>
+                <strong style="color:#fbbf24; font-size:0.98rem;">📲 WICHTIG: GENAU HIER DAS ICON ERSTELLEN!</strong><br>
+                Diese Seite (<code>larskli.github.io/ets-app</code>) ist deine <strong>unsterbliche, feste Adresse</strong> (bleibt auch nach Server-Neustart immer gleich!):<br><br>
+                1️⃣ Tippe <strong>jetzt auf dieser Seite</strong> oben rechts im Browser auf <strong><code>⋮</code></strong> (oder unten auf <strong><code>≡</code></strong> / beim iPhone auf <strong>Teilen <code>⬆️</code></strong>).<br>
+                2️⃣ Wähle <strong>„Zum Startbildschirm zufügen“</strong> (oder <strong>„App installieren“</strong>).<br>
                 3️⃣ Tippe danach unten auf den grünen Button!
             </div>
             <button class="btn" onclick="proceedToLiveApp(true)">🚀 Jetzt direkt in die App starten</button>
@@ -80,16 +89,47 @@
     </div>
 
     <script>
+        let deferredPrompt = null;
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/ets-app/sw.js').catch(() => {});
+        }
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            const b = document.getElementById('btn-native-install');
+            if (b) b.style.display = 'block';
+        });
+
+        async function triggerNativeInstall() {
+            if (!deferredPrompt) return;
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            deferredPrompt = null;
+            document.getElementById('btn-native-install').style.display = 'none';
+            if (outcome === 'accepted') {
+                localStorage.setItem('ets_icon_setup_done', '1');
+            }
+        }
+
         const params = new URLSearchParams(window.location.search);
         const wdParam = params.get('wd_enroll') || '';
         const stParam = params.get('st_pass') || '';
         const setupIcon = params.get('setup_icon') === '1';
+        const forceSetup = params.get('force_setup') === '1';
 
         if (wdParam && wdParam.length >= 16) {
             localStorage.setItem('ets_wd_token', wdParam);
         }
         if (stParam && stParam.length >= 16) {
             localStorage.setItem('ets_st_token', stParam);
+        }
+        if (forceSetup) {
+            localStorage.removeItem('ets_icon_setup_done');
+        }
+        // Query-Parameter aus der Adresszeile bereinigen, damit beim manuellen "Zum Startbildschirm zufügen"
+        // immer die saubere, feste Adresse https://larskli.github.io/ets-app/ gespeichert wird!
+        if (window.history && window.history.replaceState && (wdParam || stParam || setupIcon || forceSetup)) {
+            window.history.replaceState({}, document.title, '/ets-app/');
         }
 
         let targetTunnelUrl = '';
@@ -119,23 +159,12 @@
         }
 
         (async function init() {
-            try {
-                const r = await fetch('tunnel.json?_t=' + Date.now(), { cache: 'no-store' });
-                if (r.ok) {
-                    const d = await r.json();
-                    targetTunnelUrl = (d.tunnel_url || '').replace(/\/$/, '');
-                }
-            } catch (e) {}
-
-            // Wenn der Nutzer frisch vom QR-Checkin kommt (setup_icon=1), zeigen wir ihm hier auf der FESTEN URL den Hinweis zum Icon-Speichern:
-            if (setupIcon && !window.matchMedia('(display-mode: standalone)').matches) {
-                document.getElementById('status-txt').textContent = '✅ Dein Wachhund-Ausweis & Login sind dauerhaft auf diesem Handy hinterlegt!';
+            if (setupIcon && !localStorage.getItem('ets_icon_setup_done')) {
+                document.getElementById('status-txt').textContent = '✅ Dein Handy ist fest beim Wachhund registriert!';
                 document.getElementById('setup-box').style.display = 'block';
                 return;
             }
-
-            // Ansonsten (Klick auf das Startbildschirm-Icon): Sofort und ohne Klick weiterleiten!
-            proceedToLiveApp(false);
+            await proceedToLiveApp(false);
         })();
     </script>
 </body>
