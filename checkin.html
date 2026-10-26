@@ -32,9 +32,20 @@
             const savedWd = localStorage.getItem('ets_wd_token') || '';
             const savedSt = localStorage.getItem('ets_st_token') || '';
             try {
-                const r = await fetch('tunnel.json?_t=' + Date.now(), { cache: 'no-store' });
-                const d = await r.json();
-                const base = (d.tunnel_url || '').replace(/\/$/, '');
+                let base = '';
+                try {
+                    const rApi = await fetch('https://api.github.com/repos/LarsKli/ets-app/contents/tunnel.json?_t=' + Date.now(), { cache: 'no-store' });
+                    if (rApi.ok) {
+                        const jApi = await rApi.json();
+                        const decoded = JSON.parse(atob(jApi.content));
+                        base = (decoded.tunnel_url || '').replace(/\/$/, '');
+                    }
+                } catch (_e) {}
+                if (!base) {
+                    const r = await fetch('tunnel.json?_t=' + Date.now(), { cache: 'no-store' });
+                    const d = await r.json();
+                    base = (d.tunnel_url || '').replace(/\/$/, '');
+                }
                 // Falls das Handy auf der festen Adresse schon seine Token gespeichert hat, direkt in die App einloggen!
                 if (savedWd && savedSt && params.get('force_form') !== '1') {
                     window.location.replace(base + '/index.html?wd_enroll=' + encodeURIComponent(savedWd) + '&st_pass=' + encodeURIComponent(savedSt));

@@ -142,6 +142,16 @@
             statusEl.textContent = '⏳ Öffne ETS & MTS Firmen-App...';
             try {
                 if (!targetTunnelUrl) {
+                    try {
+                        const rApi = await fetch('https://api.github.com/repos/LarsKli/ets-app/contents/tunnel.json?_t=' + Date.now(), { cache: 'no-store' });
+                        if (rApi.ok) {
+                            const jApi = await rApi.json();
+                            const decoded = JSON.parse(atob(jApi.content));
+                            targetTunnelUrl = (decoded.tunnel_url || '').replace(/\/$/, '');
+                        }
+                    } catch (_e) {}
+                }
+                if (!targetTunnelUrl) {
                     const r = await fetch('tunnel.json?_t=' + Date.now(), { cache: 'no-store' });
                     const d = await r.json();
                     targetTunnelUrl = (d.tunnel_url || '').replace(/\/$/, '');
