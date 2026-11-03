@@ -2,25 +2,35 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>ETS & MTS Baustellen-App</title>
     <link rel="manifest" href="/ets-app/manifest.json">
-    <meta name="theme-color" content="#10b981">
+    <meta name="theme-color" content="#0f172a">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="ETS & MTS">
     <link rel="apple-touch-icon" href="/ets-app/icon-192.png">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: radial-gradient(circle at top, #0f2942 0%, #070d19 75%);
             color: #f8fafc;
-            min-height: 100vh;
+        }
+        #loader-wrapper {
+            position: fixed;
+            inset: 0;
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 20px;
             text-align: center;
+            z-index: 20;
+            background: radial-gradient(circle at top, #0f2942 0%, #070d19 75%);
+            transition: opacity 0.25s ease;
         }
         .card {
             background: rgba(17, 28, 45, 0.96);
@@ -62,31 +72,45 @@
             line-height: 1.5;
             color: #fef3c7;
         }
+        #live-app-frame {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+            z-index: 10;
+            display: none;
+            background: #0f172a;
+        }
     </style>
 </head>
 <body>
-    <div class="card" id="main-card">
-        <div style="font-size:3rem; margin-bottom:8px;">🏗️🐕‍🦺</div>
-        <h1 style="font-size:1.35rem; font-weight:900; color:#34d399;">ETS &amp; MTS Baustellen-App</h1>
-        <p id="status-txt" style="color:#cbd5e1; font-size:0.92rem; margin-top:8px;">
-            ⏳ Verbinde mit deinem festen Firmen-Zugang...
-        </p>
+    <div id="loader-wrapper">
+        <div class="card" id="main-card">
+            <div style="font-size:3rem; margin-bottom:8px;">🏗️🐕‍🦺</div>
+            <h1 style="font-size:1.35rem; font-weight:900; color:#34d399;">ETS &amp; MTS Baustellen-App</h1>
+            <p id="status-txt" style="color:#cbd5e1; font-size:0.92rem; margin-top:8px;">
+                ⏳ Verbinde mit deinem festen Firmen-Zugang...
+            </p>
 
-        <div id="setup-box" style="display:none;">
-            <button id="btn-native-install" class="btn btn-install" style="display:none;" onclick="triggerNativeInstall()">
-                📲 1-Klick: App-Icon jetzt auf Handy installieren
-            </button>
+            <div id="setup-box" style="display:none;">
+                <button id="btn-native-install" class="btn btn-install" style="display:none;" onclick="triggerNativeInstall()">
+                    📲 1-Klick: App-Icon jetzt auf Handy installieren
+                </button>
 
-            <div class="hint">
-                <strong style="color:#fbbf24; font-size:0.98rem;">📲 WICHTIG: GENAU HIER DAS ICON ERSTELLEN!</strong><br>
-                Diese Seite (<code>larskli.github.io/ets-app</code>) ist deine <strong>unsterbliche, feste Adresse</strong> (bleibt auch nach Server-Neustart immer gleich!):<br><br>
-                1️⃣ Tippe <strong>jetzt auf dieser Seite</strong> oben rechts im Browser auf <strong><code>⋮</code></strong> (oder unten auf <strong><code>≡</code></strong> / beim iPhone auf <strong>Teilen <code>⬆️</code></strong>).<br>
-                2️⃣ Wähle <strong>„Zum Startbildschirm zufügen“</strong> (oder <strong>„App installieren“</strong>).<br>
-                3️⃣ Tippe danach unten auf den grünen Button!
+                <div class="hint">
+                    <strong style="color:#fbbf24; font-size:0.98rem;">📲 WICHTIG: FESTE DAUER-ADRESSE AKTIV!</strong><br>
+                    Diese Seite (<code>larskli.github.io/ets-app</code>) bleibt <strong>immer oben in deiner Adresszeile</strong>:<br><br>
+                    1️⃣ Tippe oben rechts im Browser auf <strong><code>⋮</code></strong> (oder beim iPhone auf <strong>Teilen <code>⬆️</code></strong>).<br>
+                    2️⃣ Wähle <strong>„Zum Startbildschirm zufügen“</strong> (oder <strong>„App installieren“</strong>).<br>
+                    3️⃣ Tippe danach unten auf den grünen Button!
+                </div>
+                <button class="btn" onclick="proceedToLiveApp(true)">🚀 Jetzt direkt in die App starten</button>
             </div>
-            <button class="btn" onclick="proceedToLiveApp(true)">🚀 Jetzt direkt in die App starten</button>
         </div>
     </div>
+
+    <iframe id="live-app-frame" allow="microphone; camera; clipboard-read; clipboard-write; fullscreen"></iframe>
 
     <script>
         let deferredPrompt = null;
@@ -111,6 +135,26 @@
             }
         }
 
+        // Token-Synchronisation aus dem eingebetteten App-Fenster empfangen und dauerhaft auf larskli.github.io sichern
+        window.addEventListener('message', (event) => {
+            try {
+                const msg = event.data || {};
+                if (msg.type === 'ETS_SYNC_TOKENS') {
+                    if (msg.wd_token && msg.wd_token.length >= 16) {
+                        localStorage.setItem('ets_wd_token', msg.wd_token);
+                    }
+                    if (msg.st_token && msg.st_token.length >= 16) {
+                        localStorage.setItem('ets_st_token', msg.st_token);
+                    }
+                    if (msg.last_username) {
+                        localStorage.setItem('ets_last_username', msg.last_username);
+                    }
+                } else if (msg.type === 'ETS_CLEAR_SESSION') {
+                    localStorage.removeItem('ets_st_token');
+                }
+            } catch (_e) {}
+        });
+
         const params = new URLSearchParams(window.location.search);
         const wdParam = params.get('wd_enroll') || '';
         const stParam = params.get('st_pass') || '';
@@ -126,13 +170,43 @@
         if (forceSetup) {
             localStorage.removeItem('ets_icon_setup_done');
         }
-        // Query-Parameter aus der Adresszeile bereinigen, damit beim manuellen "Zum Startbildschirm zufügen"
-        // immer die saubere, feste Adresse https://larskli.github.io/ets-app/ gespeichert wird!
+        // Query-Parameter sofort bereinigen -> Adresszeile bleibt IMMER exakt https://larskli.github.io/ets-app/
         if (window.history && window.history.replaceState && (wdParam || stParam || setupIcon || forceSetup)) {
             window.history.replaceState({}, document.title, '/ets-app/');
         }
 
-        let targetTunnelUrl = '';
+        let currentTunnelUrl = '';
+
+        async function fetchLatestTunnelUrl() {
+            try {
+                const rApi = await fetch('https://api.github.com/repos/LarsKli/ets-app/contents/tunnel.json?_t=' + Date.now(), { cache: 'no-store' });
+                if (rApi.ok) {
+                    const jApi = await rApi.json();
+                    const decoded = JSON.parse(atob(jApi.content));
+                    const u = (decoded.tunnel_url || '').replace(/\/$/, '');
+                    if (u) return u;
+                }
+            } catch (_e) {}
+            try {
+                const r = await fetch('tunnel.json?_t=' + Date.now(), { cache: 'no-store' });
+                if (r.ok) {
+                    const d = await r.json();
+                    const u = (d.tunnel_url || '').replace(/\/$/, '');
+                    if (u) return u;
+                }
+            } catch (_e) {}
+            return '';
+        }
+
+        function buildEmbeddedUrl(baseTunnelUrl) {
+            const savedWd = localStorage.getItem('ets_wd_token') || wdParam || '';
+            const savedSt = localStorage.getItem('ets_st_token') || stParam || '';
+            const q = new URLSearchParams();
+            q.set('embed', '1');
+            if (savedWd) q.set('wd_enroll', savedWd);
+            if (savedSt) q.set('st_pass', savedSt);
+            return baseTunnelUrl + '/index.html?' + q.toString();
+        }
 
         async function proceedToLiveApp(markDone) {
             if (markDone) {
@@ -141,32 +215,48 @@
             const statusEl = document.getElementById('status-txt');
             statusEl.textContent = '⏳ Öffne ETS & MTS Firmen-App...';
             try {
-                if (!targetTunnelUrl) {
-                    try {
-                        const rApi = await fetch('https://api.github.com/repos/LarsKli/ets-app/contents/tunnel.json?_t=' + Date.now(), { cache: 'no-store' });
-                        if (rApi.ok) {
-                            const jApi = await rApi.json();
-                            const decoded = JSON.parse(atob(jApi.content));
-                            targetTunnelUrl = (decoded.tunnel_url || '').replace(/\/$/, '');
-                        }
-                    } catch (_e) {}
+                const latestUrl = await fetchLatestTunnelUrl();
+                if (!latestUrl) {
+                    throw new Error('Keine Tunnel-URL gefunden');
                 }
-                if (!targetTunnelUrl) {
-                    const r = await fetch('tunnel.json?_t=' + Date.now(), { cache: 'no-store' });
-                    const d = await r.json();
-                    targetTunnelUrl = (d.tunnel_url || '').replace(/\/$/, '');
-                }
-                const savedWd = localStorage.getItem('ets_wd_token') || wdParam || '';
-                const savedSt = localStorage.getItem('ets_st_token') || stParam || '';
-                const q = new URLSearchParams();
-                if (savedWd) q.set('wd_enroll', savedWd);
-                if (savedSt) q.set('st_pass', savedSt);
-                const dest = targetTunnelUrl + '/index.html' + (q.toString() ? '?' + q.toString() : '');
-                window.location.replace(dest);
+                currentTunnelUrl = latestUrl;
+                const frame = document.getElementById('live-app-frame');
+                const loader = document.getElementById('loader-wrapper');
+                const dest = buildEmbeddedUrl(currentTunnelUrl);
+
+                frame.onload = function() {
+                    frame.style.display = 'block';
+                    if (loader) loader.style.display = 'none';
+                };
+                frame.src = dest;
+                // Sicherheits-Fallback falls onload nach 3.5s noch nicht gefeuert hat
+                setTimeout(() => {
+                    frame.style.display = 'block';
+                    if (loader) loader.style.display = 'none';
+                }, 3500);
             } catch (e) {
-                statusEl.innerHTML = '⚠️ Verbindungsaufbau läuft... <button class="btn" onclick="location.reload()">🔄 Erneut versuchen</button>';
+                statusEl.innerHTML = '⚠️ Verbindungsaufbau läuft... <button class="btn" onclick="proceedToLiveApp(false)">🔄 Erneut versuchen</button>';
             }
         }
+
+        // Automatischer Selbstheilungs-Check beim Aufwecken des Handys:
+        // Falls sich die Tunnel-Adresse über Nacht geändert hat, wird das eingebettete Fenster automatisch aktualisiert!
+        async function verifyTunnelOnWakeup() {
+            if (document.visibilityState && document.visibilityState !== 'visible') return;
+            try {
+                const latestUrl = await fetchLatestTunnelUrl();
+                if (latestUrl && currentTunnelUrl && latestUrl !== currentTunnelUrl) {
+                    currentTunnelUrl = latestUrl;
+                    const frame = document.getElementById('live-app-frame');
+                    if (frame) {
+                        frame.src = buildEmbeddedUrl(currentTunnelUrl);
+                    }
+                }
+            } catch (_e) {}
+        }
+
+        document.addEventListener('visibilitychange', verifyTunnelOnWakeup);
+        window.addEventListener('online', verifyTunnelOnWakeup);
 
         (async function init() {
             if (setupIcon && !localStorage.getItem('ets_icon_setup_done')) {

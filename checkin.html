@@ -46,9 +46,9 @@
                     const d = await r.json();
                     base = (d.tunnel_url || '').replace(/\/$/, '');
                 }
-                // Falls das Handy auf der festen Adresse schon seine Token gespeichert hat, direkt in die App einloggen!
+                // Falls das Handy auf der festen Adresse schon seine Token gespeichert hat, direkt auf der festen Adresse starten!
                 if (savedWd && savedSt && params.get('force_form') !== '1') {
-                    window.location.replace(base + '/index.html?wd_enroll=' + encodeURIComponent(savedWd) + '&st_pass=' + encodeURIComponent(savedSt));
+                    window.location.replace('/ets-app/?wd_enroll=' + encodeURIComponent(savedWd) + '&st_pass=' + encodeURIComponent(savedSt));
                     return;
                 }
                 let url = base + '/wand_checkin.html?key=' + encodeURIComponent(key) + '&v=' + Date.now();
